@@ -1,12 +1,10 @@
-﻿using System.Threading.Tasks;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using TestServerPOC.Data;
 
 namespace TestServerInMemoryDbPOC.Controllers
 {
-    [Produces("application/json")]
-    [Route("api/ApplicationUsers")]
+    [Authorize(Policy = "Admin")]
     public class ApplicationUsersController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -16,18 +14,10 @@ namespace TestServerInMemoryDbPOC.Controllers
             _context = context;
         }
 
-        // GET: api/ApplicationUsers/5
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetApplicationUser([FromRoute] string id)
+        [HttpGet]
+        public ActionResult GetData()
         {
-            var applicationUser = await _context.Users.SingleOrDefaultAsync(m => m.Id == id);
-
-            if (applicationUser == null)
-            {
-                return NotFound();
-            }
-
-            return Ok(applicationUser);
+            return Ok(true);
         }
     }
 }

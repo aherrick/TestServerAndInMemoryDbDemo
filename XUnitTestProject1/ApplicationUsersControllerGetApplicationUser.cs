@@ -1,13 +1,12 @@
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting;
+using TestServerInMemoryDbPOC.Data;
 using TestServerPOC;
-using Xunit;
-using Microsoft.AspNetCore.TestHost;
-using Newtonsoft.Json;
 using TestServerPOC.Data;
-using TestServerPOC.Models;
+using Xunit;
 
 namespace XUnitTestProject1
 {
@@ -25,40 +24,28 @@ namespace XUnitTestProject1
             var server = new TestServer(builder);
             _context = server.Host.Services.GetService(typeof(ApplicationDbContext)) as ApplicationDbContext;
             _client = server.CreateClient();
-        }
 
-        [Fact]
-        public async Task DoesReturnNotFound_GivenUserDoesNotExist()
-        {
-            // Act
-            var response = await _client.GetAsync($"/api/ApplicationUsers/abc"); // No users with ID abc
+            _context.Database.EnsureDeleted();
+            _context.Database.EnsureCreated();
 
-            // Assert
-            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        }
-
-        [Fact]
-        public async Task DoesReturnOk_GivenUserExists()
-        {
-            // Arrange
-            var user = new ApplicationUser
+            var user = new User
             {
-                Id = "123",
-                Email = "test@test.com"
+                Name = "Andrew",
+                Role = "Admin"
             };
 
-            _context.Users.Add(user);
+            _context.User.Add(user);
             _context.SaveChanges();
+        }
 
+        [Fact]
+        public async Task DoesReturnSuccess()
+        {
             // Act
-            var response = await _client.GetAsync($"/api/ApplicationUsers/{user.Id}");
+            var response = await _client.GetAsync($"/ApplicationUsers/GetData");
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            string jsonResult = await response.Content.ReadAsStringAsync();
-            ApplicationUser userFromJson = JsonConvert.DeserializeObject<ApplicationUser>(jsonResult);
-            Assert.Equal(user.Id, userFromJson.Id);
-            Assert.Equal(user.Email, userFromJson.Email);
         }
     }
 }

@@ -1,12 +1,10 @@
 ﻿using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TestServerPOC.Data;
-using TestServerPOC.Models;
-using TestServerPOC.Services;
 
 namespace TestServerPOC
 {
@@ -21,10 +19,10 @@ namespace TestServerPOC
             CurrentEnvironment = currentEnvironment;
         }
 
-
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            // add db
             if (CurrentEnvironment.IsEnvironment("Testing"))
             {
                 services.AddDbContext<ApplicationDbContext>(options =>
@@ -36,14 +34,27 @@ namespace TestServerPOC
                     options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
             }
 
-            services.AddIdentity<ApplicationUser, IdentityRole>()
-                .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddDefaultTokenProviders();
+            // add basic policy auth
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy("Admin", policy =>
+                {
+                    policy.RequireAssertion(async httpContext =>
+                    {
+                        // only way I know to get to try and resolve DbContext
+                        var atomsDBContext = services.BuildServiceProvider().GetService<ApplicationDbContext>();
 
-            // Add application services.
-            services.AddTransient<IEmailSender, EmailSender>();
+                        var user = await atomsDBContext.User.FirstOrDefaultAsync();
 
-            services.AddMvc();
+                        // don't have a user at this point even though we added during test
+
+                        // validate db access role
+                        return true;
+                    });
+                });
+            });
+
+            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -64,12 +75,7 @@ namespace TestServerPOC
 
             app.UseAuthentication();
 
-            app.UseMvc(routes =>
-            {
-                routes.MapRoute(
-                    name: "default",
-                    template: "{controller=Home}/{action=Index}/{id?}");
-            });
+            app.UseMvcWithDefaultRoute();
         }
     }
 }
